@@ -1,28 +1,34 @@
---// Auto Card Picker (Tier + Buff/Debuff Priority)
--- Silent, works every selection popup
+--// Auto Card Picker with UI Navigation toggle + tier/type priority
+-- Works every time cards appear
 
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
 local endpoints = ReplicatedStorage:WaitForChild("endpoints")
 local clientToServer = endpoints:WaitForChild("client_to_server")
 local serverToClient = endpoints:WaitForChild("server_to_client")
 
 local Cards = serverToClient:WaitForChild("Cards")
-local cardAction = clientToServer:WaitForChild("CardAction")
+local CardAction = clientToServer:WaitForChild("CardAction")
 
 -- SETTINGS --
-local tierPriority = { "Tier 3", "Tier 2", "Tier 1" } -- top to bottom
-local preferType = "Debuff" -- can be "Buff" or "Debuff"
+local tierPriority = { "Tier 3", "Tier 2", "Tier 1" } -- order of preference
+local preferType = "Debuff" -- or "Debuff"
+local highlightTime = 0.2 -- seconds to keep navigation highlight on
 
---// Choose the best card based on tier + type priority
-local function chooseCard(cardList)
-	local bestCard = nil
-	local bestTierIndex = math.huge
+--// Choose the best card based on tier + type
+local function chooseCard(cards)
+	local bestCard, bestTierIndex, bestType, bestIndex = nil, math.huge, nil, nil
 
-	for _, card in ipairs(cardList) do
+	for index, card in ipairs(cards) do
 		local cardName = tostring(card.CardName or "")
 		local cardType = tostring(card.CardType or "")
 		local tierIndex = nil
@@ -38,29 +44,65 @@ local function chooseCard(cardList)
 			if not bestCard then
 				bestCard = card
 				bestTierIndex = tierIndex
+				bestType = cardType
+				bestIndex = index
 			else
 				local betterTier = tierIndex < bestTierIndex
 				local sameTier = tierIndex == bestTierIndex
-				local betterType = (preferType == cardType and preferType ~= bestCard.CardType)
+				local betterType = (preferType == cardType and preferType ~= bestType)
 
 				if betterTier or (sameTier and betterType) then
 					bestCard = card
 					bestTierIndex = tierIndex
+					bestType = cardType
+					bestIndex = index
 				end
 			end
 		end
 	end
 
-	return bestCard
+	return bestIndex
 end
 
---// Listen for card selection events
-Cards.OnClientEvent:Connect(function(action, data)
-	if action == "StartSelection" and typeof(data) == "table" then
-		local selected = chooseCard(data)
-		if selected then
-			task.wait(0.25)
-			cardAction:FireServer(selected)
+--// Find the card button on the PlayerGui by text
+local function findCardButton(cardName)
+	for _, gui in ipairs(playerGui:GetChildren()) do
+		for _, obj in ipairs(gui:GetDescendants()) do
+			if obj:IsA("TextButton") or obj:IsA("ImageButton") then
+				local text = tostring(obj.Text or obj.Name or "")
+				if string.find(string.lower(text), string.lower(cardName)) then
+					return obj
+				end
+			end
 		end
 	end
+end
+
+--// Handle the event when cards appear
+Cards.OnClientEvent:Connect(function(action, cardList)
+	if action ~= "StartSelection" or typeof(cardList) ~= "table" then
+		return
+	end
+
+	local chosenIndex = chooseCard(cardList)
+	if not chosenIndex then
+		return
+	end
+
+	-- Visually highlight the card using UI navigation (optional effect)
+	local chosenCard = cardList[chosenIndex]
+	local cardName = tostring(chosenCard.CardName or "")
+	local button = findCardButton(cardName)
+
+	if button then
+		local prevNav = GuiService.GuiNavigationEnabled
+		GuiService.GuiNavigationEnabled = true
+		GuiService.SelectedObject = button
+		task.wait(highlightTime)
+		GuiService.GuiNavigationEnabled = prevNav
+	end
+
+	-- Actually select the card (functional part)
+	task.wait(0.1)
+	CardAction:FireServer(chosenIndex)
 end)
