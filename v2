@@ -1,0 +1,9 @@
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+if game.CreatorId == 12229756 then
+	return
+else
+	loadstring(game:HttpGet("https://github.com/phantomzolo/scripts/blob/main/auto%20card%20pick"))()
+end
