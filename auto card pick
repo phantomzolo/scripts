@@ -1,0 +1,79 @@
+--// Tier-Based Auto Card Picker
+-- Place in StarterPlayerScripts (LocalScript)
+
+if not game:IsLoaded() then
+	game.Loaded:Wait()
+end
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local endpoints = ReplicatedStorage:WaitForChild("endpoints")
+local clientToServer = endpoints:WaitForChild("client_to_server")
+local serverToClient = endpoints:WaitForChild("server_to_client")
+
+local cardAction = clientToServer:WaitForChild("cardaction")
+
+--// SETTINGS
+-- Set your preferred tier priority (e.g., pick Tier 3 first if available)
+local tierPriority = { "Tier 3", "Tier 2", "Tier 1" }
+
+-- Choose whether to pick Buff or Debuff type
+local preferBuffs = true -- true = Buff Cards, false = Debuff Cards
+
+-- Maps how to interpret each type
+local cardTypeKeywords = {
+	Buff = { "Damage", "Range", "Cooldown" },
+	Debuff = { "Trade Off" }
+}
+
+--// FUNCTION
+local function getCardType(cardName)
+	cardName = string.lower(cardName)
+	for _, kw in ipairs(cardTypeKeywords.Buff) do
+		if string.find(cardName, string.lower(kw)) then
+			return "Buff"
+		end
+	end
+	for _, kw in ipairs(cardTypeKeywords.Debuff) do
+		if string.find(cardName, string.lower(kw)) then
+			return "Debuff"
+		end
+	end
+	return nil
+end
+
+local function autoPickCard(cards)
+	if typeof(cards) ~= "table" then return end
+
+	local chosenCard = nil
+
+	for _, tier in ipairs(tierPriority) do
+		for _, card in ipairs(cards) do
+			local cardName = card.name or ""
+			local cardType = getCardType(cardName)
+
+			if string.find(string.lower(cardName), string.lower(tier)) then
+				if preferBuffs and cardType == "Buff" then
+					chosenCard = card
+					break
+				elseif not preferBuffs and cardType == "Debuff" then
+					chosenCard = card
+					break
+				end
+			end
+		end
+		if chosenCard then break end
+	end
+
+	if chosenCard then
+		cardAction:FireServer(chosenCard)
+	end
+end
+
+--// LISTENER
+serverToClient.ChildAdded:Connect(function(child)
+	if child:IsA("RemoteEvent") and string.find(string.lower(child.Name), "card") then
+		child.OnClientEvent:Connect(function(cardData)
+			autoPickCard(cardData)
+		end)
+	end
+end)
