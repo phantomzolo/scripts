@@ -1,8 +1,6 @@
 --// Auto Card Picker (Tier + Type Priority + UI Navigation Toggle + Debug Prints)
 
-if not game:IsLoaded() then
-	game.Loaded:Wait()
-end
+repeat task.wait() until game:IsLoaded()
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GuiService = game:GetService("GuiService")
