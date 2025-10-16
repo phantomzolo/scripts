@@ -1,31 +1,31 @@
---// Tier-Based Auto Card Picker
+--// Auto Card Picker (UI Navigation Controlled)
 -- Place in StarterPlayerScripts (LocalScript)
 
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
 
+local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local endpoints = ReplicatedStorage:WaitForChild("endpoints")
 local clientToServer = endpoints:WaitForChild("client_to_server")
 local serverToClient = endpoints:WaitForChild("server_to_client")
 
 local cardAction = clientToServer:WaitForChild("cardaction")
 
---// SETTINGS
--- Set your preferred tier priority (e.g., pick Tier 3 first if available)
-local tierPriority = { "Tier 3", "Tier 2", "Tier 1" }
+-- SETTINGS
+local tierPriority = { "Tier 3", "Tier 2", "Tier 1" } -- order of preference
+local preferBuffs = true -- true = Buffs, false = Debuffs
 
--- Choose whether to pick Buff or Debuff type
-local preferBuffs = false -- true = Buff Cards, false = Debuff Cards
-
--- Maps how to interpret each type
+-- Keywords to identify Buff/Debuff types
 local cardTypeKeywords = {
 	Buff = { "Damage", "Range", "Cooldown" },
 	Debuff = { "Trade Off" }
 }
 
---// FUNCTION
+-- Get Buff/Debuff type by name
 local function getCardType(cardName)
 	cardName = string.lower(cardName)
 	for _, kw in ipairs(cardTypeKeywords.Buff) do
@@ -41,10 +41,35 @@ local function getCardType(cardName)
 	return nil
 end
 
+-- Simulate UI selection
+local function simulateSelect()
+	-- Forces UI navigation mode on
+	GuiService.SelectedObject = nil
+	GuiService.GuiNavigationEnabled = true
+
+	-- Simulate a short delay before “click”
+	task.wait(0.05)
+	UserInputService.InputBegan:Fire({
+		KeyCode = Enum.KeyCode.Return,
+		UserInputType = Enum.UserInputType.Keyboard
+	}, false)
+
+	task.wait(0.05)
+	UserInputService.InputEnded:Fire({
+		KeyCode = Enum.KeyCode.Return,
+		UserInputType = Enum.UserInputType.Keyboard
+	}, false)
+
+	-- Turn UI navigation back off
+	task.wait(0.1)
+	GuiService.GuiNavigationEnabled = false
+end
+
+-- Auto-pick function
 local function autoPickCard(cards)
 	if typeof(cards) ~= "table" then return end
 
-	local chosenCard = nil
+	local chosenCard
 
 	for _, tier in ipairs(tierPriority) do
 		for _, card in ipairs(cards) do
@@ -65,11 +90,14 @@ local function autoPickCard(cards)
 	end
 
 	if chosenCard then
+		-- Force UI Navigation interaction
+		simulateSelect()
+		-- Fire to server (actual pick)
 		cardAction:FireServer(chosenCard)
 	end
 end
 
---// LISTENER
+-- Detect when cards appear
 serverToClient.ChildAdded:Connect(function(child)
 	if child:IsA("RemoteEvent") and string.find(string.lower(child.Name), "card") then
 		child.OnClientEvent:Connect(function(cardData)
