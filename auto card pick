@@ -1,5 +1,4 @@
---// Auto Card Picker with UI Navigation toggle + tier/type priority
--- Works every time cards appear
+--// Auto Card Picker (Tier + Type Priority + UI Navigation Toggle + Debug Prints)
 
 if not game:IsLoaded() then
 	game.Loaded:Wait()
@@ -21,10 +20,10 @@ local CardAction = clientToServer:WaitForChild("CardAction")
 
 -- SETTINGS --
 local tierPriority = { "Tier 3", "Tier 2", "Tier 1" } -- order of preference
-local preferType = "Debuff" -- or "Debuff"
-local highlightTime = 0.2 -- seconds to keep navigation highlight on
+local preferType = "Debuff" -- can be "Buff" or "Debuff"
+local highlightTime = 0.25 -- how long to keep UI navigation highlight
 
---// Choose the best card based on tier + type
+--// Choose best card by tier + type
 local function chooseCard(cards)
 	local bestCard, bestTierIndex, bestType, bestIndex = nil, math.huge, nil, nil
 
@@ -39,6 +38,8 @@ local function chooseCard(cards)
 				break
 			end
 		end
+
+		print(string.format("[AutoPicker] Card %d: %s | Type: %s | TierIndex: %s", index, cardName, cardType, tostring(tierIndex)))
 
 		if tierIndex then
 			if not bestCard then
@@ -61,10 +62,16 @@ local function chooseCard(cards)
 		end
 	end
 
+	if bestCard then
+		print(string.format("[AutoPicker] Selected: %s (Index %d, Type %s)", tostring(bestCard.CardName), bestIndex, tostring(bestCard.CardType)))
+	else
+		print("[AutoPicker] No valid card found!")
+	end
+
 	return bestIndex
 end
 
---// Find the card button on the PlayerGui by text
+--// Find the card button on PlayerGui (for visual highlight)
 local function findCardButton(cardName)
 	for _, gui in ipairs(playerGui:GetChildren()) do
 		for _, obj in ipairs(gui:GetDescendants()) do
@@ -78,31 +85,40 @@ local function findCardButton(cardName)
 	end
 end
 
---// Handle the event when cards appear
+--// When Cards popup from server
 Cards.OnClientEvent:Connect(function(action, cardList)
+	print("[AutoPicker] Cards event received:", action)
 	if action ~= "StartSelection" or typeof(cardList) ~= "table" then
+		print("[AutoPicker] Ignored event (not StartSelection or invalid data)")
 		return
 	end
+
+	print("[AutoPicker] Card list received (" .. tostring(#cardList) .. " options)")
 
 	local chosenIndex = chooseCard(cardList)
 	if not chosenIndex then
+		print("[AutoPicker] No card chosen.")
 		return
 	end
 
-	-- Visually highlight the card using UI navigation (optional effect)
 	local chosenCard = cardList[chosenIndex]
 	local cardName = tostring(chosenCard.CardName or "")
-	local button = findCardButton(cardName)
+	print("[AutoPicker] Preparing to select card:", cardName)
 
+	-- Visual UI navigation highlight (optional)
+	local button = findCardButton(cardName)
 	if button then
+		print("[AutoPicker] Highlighting card button...")
 		local prevNav = GuiService.GuiNavigationEnabled
 		GuiService.GuiNavigationEnabled = true
 		GuiService.SelectedObject = button
 		task.wait(highlightTime)
 		GuiService.GuiNavigationEnabled = prevNav
+	else
+		print("[AutoPicker] Card button not found in PlayerGui (skipping highlight)")
 	end
 
-	-- Actually select the card (functional part)
 	task.wait(0.1)
+	print("[AutoPicker] Firing CardAction:FireServer(" .. chosenIndex .. ")")
 	CardAction:FireServer(chosenIndex)
 end)
