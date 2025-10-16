@@ -17,7 +17,7 @@ local cardAction = clientToServer:WaitForChild("cardaction")
 local tierPriority = { "Tier 3", "Tier 2", "Tier 1" }
 
 -- Choose whether to pick Buff or Debuff type
-local preferBuffs = true -- true = Buff Cards, false = Debuff Cards
+local preferBuffs = false -- true = Buff Cards, false = Debuff Cards
 
 -- Maps how to interpret each type
 local cardTypeKeywords = {
