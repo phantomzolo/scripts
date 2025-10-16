@@ -1,7 +1,3 @@
---// Auto Card Picker (Tier + Type Priority + UI Navigation Toggle + Debug Prints)
-
-repeat task.wait() until game:IsLoaded()
-
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
