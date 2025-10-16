@@ -1,192 +1,66 @@
---// Tier-Based Auto Card Picker using real UI selection
--- Place in StarterPlayerScripts (LocalScript)
+--// Auto Card Picker (Tier + Buff/Debuff Priority)
+-- Silent, works every selection popup
 
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GuiService = game:GetService("GuiService")
-local Players = game:GetService("Players")
-
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
 local endpoints = ReplicatedStorage:WaitForChild("endpoints")
 local clientToServer = endpoints:WaitForChild("client_to_server")
 local serverToClient = endpoints:WaitForChild("server_to_client")
 
-local cardAction = clientToServer:WaitForChild("cardaction")
+local Cards = serverToClient:WaitForChild("Cards")
+local cardAction = clientToServer:WaitForChild("CardAction")
 
--- SETTINGS
-local tierPriority = { "Tier 3", "Tier 2", "Tier 1" } -- order of preference
-local preferBuffs = false -- true = Buffs, false = Debuffs
-local navigationEnableTime = 0.18 -- how long to leave navigation on (seconds)
-local activationWait = 0.06 -- short wait before/after Activate()
+-- SETTINGS --
+local tierPriority = { "Tier 3", "Tier 2", "Tier 1" } -- top to bottom
+local preferType = "Debuff" -- can be "Buff" or "Debuff"
 
--- Keywords mapping
-local cardTypeKeywords = {
-	Buff = { "Damage", "Range", "Cooldown" },
-	Debuff = { "Trade Off" }
-}
+--// Choose the best card based on tier + type priority
+local function chooseCard(cardList)
+	local bestCard = nil
+	local bestTierIndex = math.huge
 
-local function getCardType(cardName)
-	cardName = string.lower(cardName or "")
-	for _, kw in ipairs(cardTypeKeywords.Buff) do
-		if string.find(cardName, string.lower(kw)) then
-			return "Buff"
+	for _, card in ipairs(cardList) do
+		local cardName = tostring(card.CardName or "")
+		local cardType = tostring(card.CardType or "")
+		local tierIndex = nil
+
+		for i, tier in ipairs(tierPriority) do
+			if string.find(cardName, tier) then
+				tierIndex = i
+				break
+			end
 		end
-	end
-	for _, kw in ipairs(cardTypeKeywords.Debuff) do
-		if string.find(cardName, string.lower(kw)) then
-			return "Debuff"
-		end
-	end
-	return nil
-end
 
--- Find a GUI button in PlayerGui that matches the card's displayed text or name
-local function findButtonForCard(card)
-	-- card may be a table with fields like name/title or may be simple string/ID
-	local cardName = tostring(card.name or card.Name or card.title or card.Title or card or "")
+		if tierIndex then
+			if not bestCard then
+				bestCard = card
+				bestTierIndex = tierIndex
+			else
+				local betterTier = tierIndex < bestTierIndex
+				local sameTier = tierIndex == bestTierIndex
+				local betterType = (preferType == cardType and preferType ~= bestCard.CardType)
 
-	-- search PlayerGui for likely buttons
-	for _, guiRoot in ipairs(playerGui:GetChildren()) do
-		-- search descendants for TextButton/ImageButton with matching text or name
-		for _, obj in ipairs(guiRoot:GetDescendants()) do
-			if obj:IsA("TextButton") or obj:IsA("ImageButton") then
-				local txt = tostring(obj.Text or obj.Name or "")
-				-- check both cardName and txt, case-insensitive
-				if txt ~= "" and string.find(string.lower(txt), string.lower(cardName)) then
-					return obj
-				end
-				-- sometimes the button has a child label
-				for _, child in ipairs(obj:GetChildren()) do
-					if child:IsA("TextLabel") or child:IsA("TextButton") then
-						local childTxt = tostring(child.Text or child.Name or "")
-						if childTxt ~= "" and string.find(string.lower(childTxt), string.lower(cardName)) then
-							return obj
-						end
-					end
+				if betterTier or (sameTier and betterType) then
+					bestCard = card
+					bestTierIndex = tierIndex
 				end
 			end
 		end
 	end
 
-	-- If not found above, try looser match by tier keyword only (e.g., "Tier 1")
-	for _, guiRoot in ipairs(playerGui:GetChildren()) do
-		for _, obj in ipairs(guiRoot:GetDescendants()) do
-			if obj:IsA("TextButton") or obj:IsA("ImageButton") then
-				local txt = tostring(obj.Text or obj.Name or "")
-				for _, tier in ipairs(tierPriority) do
-					if string.find(string.lower(txt), string.lower(tier)) and string.find(string.lower(cardName), string.lower(tier)) then
-						return obj
-					end
-				end
-			end
-		end
-	end
-
-	return nil
+	return bestCard
 end
 
--- Perform selection using real UI navigation + activation
-local function performUiSelectAndActivate(button, card)
-	if not button then
-		-- fallback: directly fire server if no button found
-		pcall(function()
-			cardAction:FireServer(card)
-		end)
-		return
-	end
-
-	-- Enable GUI navigation and set selected object to the found button
-	local prevNav = GuiService.GuiNavigationEnabled
-	GuiService.GuiNavigationEnabled = true
-
-	-- Set selected object (some projects need SelectedObject, some use SelectedCoreObject)
-	-- Use pcall in case property is not writable in this environment
-	pcall(function()
-		GuiService.SelectedObject = button
-	end)
-
-	task.wait(activationWait)
-
-	-- Try to trigger activation the "native" way
-	local activatedOK = false
-	pcall(function()
-		-- Prefer :Activate() if available
-		if typeof(button.Activate) == "function" then
-			button:Activate()
-			activatedOK = true
-		else
-			-- fallback to :MouseButton1Click
-			button.MouseButton1Click:Fire()
-			activatedOK = true
+--// Listen for card selection events
+Cards.OnClientEvent:Connect(function(action, data)
+	if action == "StartSelection" and typeof(data) == "table" then
+		local selected = chooseCard(data)
+		if selected then
+			task.wait(0.25)
+			cardAction:FireServer(selected)
 		end
-	end)
-
-	-- small wait to let internal handlers run
-	task.wait(navigationEnableTime)
-
-	-- restore previous nav state
-	GuiService.GuiNavigationEnabled = prevNav
-
-	-- If activation didn't trigger server call, fallback to FireServer
-	if not activatedOK then
-		pcall(function()
-			cardAction:FireServer(card)
-		end)
-	end
-end
-
--- Decide which card to pick from data table
-local function chooseCardFromList(cards)
-	if typeof(cards) ~= "table" then return nil end
-
-	local chosenCard = nil
-
-	for _, tier in ipairs(tierPriority) do
-		for _, card in ipairs(cards) do
-			local name = tostring(card.name or card.Name or card.title or card.Title or "")
-			local cardType = getCardType(name)
-			if string.find(string.lower(name), string.lower(tier)) then
-				if preferBuffs and cardType == "Buff" then
-					chosenCard = card
-					break
-				elseif not preferBuffs and cardType == "Debuff" then
-					chosenCard = card
-					break
-				end
-			end
-		end
-		if chosenCard then break end
-	end
-
-	return chosenCard
-end
-
--- Listen for server->client card events (tries to detect any RemoteEvent with "card" in the name)
-serverToClient.ChildAdded:Connect(function(child)
-	if child:IsA("RemoteEvent") and string.find(string.lower(child.Name), "card") then
-		child.OnClientEvent:Connect(function(cardData)
-			-- guard
-			if typeof(cardData) ~= "table" then
-				-- sometimes data comes wrapped
-				return
-			end
-
-			-- choose logical card
-			local chosen = chooseCardFromList(cardData)
-			if not chosen then
-				-- nothing matched; do nothing
-				return
-			end
-
-			-- attempt to find the GUI button that represents this card
-			local button = findButtonForCard(chosen)
-			-- perform the UI navigation + activation (or fallback to FireServer)
-			performUiSelectAndActivate(button, chosen)
-		end)
 	end
 end)
