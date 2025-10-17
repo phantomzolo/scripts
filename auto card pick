@@ -1,10 +1,12 @@
--- Auto Card Selector with UI Navigation
-repeat task.wait() until game:IsLoaded()
-
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GuiService = game:GetService("GuiService")
+local LocalPlayer = Players.LocalPlayer
 
--- Remote references
+if not game:IsLoaded() then
+	game.Loaded:Wait()
+end
+
+-- Wait for required remotes
 local endpoints = ReplicatedStorage:WaitForChild("endpoints")
 local serverToClient = endpoints:WaitForChild("server_to_client")
 local clientToServer = endpoints:WaitForChild("client_to_server")
@@ -12,69 +14,61 @@ local clientToServer = endpoints:WaitForChild("client_to_server")
 local Cards = serverToClient:WaitForChild("Cards")
 local CardAction = clientToServer:WaitForChild("CardAction")
 
--- preference (you can change)
-local preferType = "Debuff" -- or "Debuff"
+print("[READY] Waiting for Cards.OnClientEvent...")
 
--- mapping of effect name → preferred card
-local cardMap = {
-	["Damage Tier 1"] = "Tier 1 Buff Card",
-	["Damage Tier 2"] = "Tier 2 Buff Card",
-	["Damage Tier 3"] = "Tier 3 Buff Card",
-	["Range Tier 1"] = "Tier 1 Buff Card",
-	["Range Tier 2"] = "Tier 2 Buff Card",
-	["Range Tier 3"] = "Tier 3 Buff Card",
-	["Cooldown Tier 1"] = "Tier 3 Buff Card",
-	["Cooldown Tier 2"] = "Tier 3 Buff Card",
-	["Cooldown Tier 3"] = "Tier 3 Buff Card",
-	["Debuff 1"] = "Tier 1 Trade Off",
-	["Debuff 2"] = "Tier 2 Trade Off",
-	["Debuff 3"] = "Tier 3 Trade Off"
+-- Define card priority
+local PRIORITY = {
+	["Damage Tier 3"] = 1,
+	["Damage Tier 2"] = 2,
+	["Damage Tier 1"] = 3,
+	["Range Tier 3"] = 4,
+	["Range Tier 2"] = 5,
+	["Range Tier 1"] = 6,
+	["Cooldown Tier 3"] = 7,
+	["Cooldown Tier 2"] = 8,
+	["Cooldown Tier 1"] = 9,
+	["Tier 3 Trade Off"] = 10,
+	["Tier 2 Trade Off"] = 11,
+	["Tier 1 Trade Off"] = 12,
 }
 
-local function selectCard(cards)
-	print("[DEBUG] Selection triggered with " .. tostring(#cards) .. " cards.")
-	
-	local bestIndex = nil
-	local bestName = nil
+-- Function to select card
+local function selectBestCard(cards)
+	print("[INFO] Cards received:", #cards)
+
+	local bestIndex, bestPriority = nil, math.huge
 
 	for i, card in ipairs(cards) do
-		if card and card.Effects and card.Effects[1] then
-			local effectName = card.Effects[1].Name
-			local match = cardMap[effectName]
-			
-			print(string.format("[DEBUG] Card %d: %s - Effect: %s", i, card.CardName, effectName))
+		local effect = card.Effects and card.Effects[1]
+		if effect then
+			local name = effect.Name
+			local priority = PRIORITY[name] or 999
+			print(string.format("[DEBUG] Card %d: %s (priority %d)", i, name, priority))
 
-			if match and card.CardName == match then
-				if preferType == card.CardType then
-					bestIndex = i
-					bestName = card.CardName
-					break
-				elseif not bestIndex then
-					bestIndex = i
-					bestName = card.CardName
-				end
+			if priority < bestPriority then
+				bestPriority = priority
+				bestIndex = i
 			end
+		else
+			print("[WARN] Card", i, "has no Effects")
 		end
 	end
 
 	if bestIndex then
-		print("[DEBUG] Selected: " .. tostring(bestName) .. " (index " .. tostring(bestIndex) .. ")")
-
-		-- enable UI navigation for highlight effect
-		GuiService.GuiNavigationEnabled = true
-		task.wait(0.3)
-		GuiService.GuiNavigationEnabled = false
-
-		-- send to server
-		CardAction:FireServer(bestIndex)
+		print(string.format("[SELECT] Choosing card #%d with priority %d", bestIndex, bestPriority))
+		task.wait(0.5)
+		pcall(function()
+			CardAction:FireServer(bestIndex)
+		end)
 	else
-		warn("[DEBUG] No matching card found, defaulting to first.")
-		CardAction:FireServer(1)
+		warn("[ERROR] No valid cards found to choose")
 	end
 end
 
+-- Listen for the card selection event
 Cards.OnClientEvent:Connect(function(eventType, data)
+	print("[EVENT] Cards.OnClientEvent received:", eventType)
 	if eventType == "StartSelection" then
-		selectCard(data)
+		selectBestCard(data)
 	end
 end)
