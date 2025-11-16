@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
-
+wait(15)
 local request_makima_sacrifice = ReplicatedStorage.endpoints.client_to_server.request_makima_sacrifice -- RemoteFunction 
 
 request_makima_sacrifice:InvokeServer(
