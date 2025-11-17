@@ -10,5 +10,5 @@ while true do
     request_makima_sacrifice:InvokeServer(
         "Placement"
     )
-    wait(8)
+    wait(10)
 end
