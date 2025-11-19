@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local traits = .G.Traits or {}
+local traits = _G.Traits or {}
 
 local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
 local mobFolder = eventsFolder:WaitForChild("client_to_server")
