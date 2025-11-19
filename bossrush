@@ -6,7 +6,7 @@ end
 
 if game.CreatorId == 35139043 then
 	local selection = {
-	    "Placement" -- Unit or Damage or Placement
+	    "Damage" -- Unit or Damage or Placement
 	}
 	local mode = {
 	    "_CSM_BOSSRUSH_TRAITS" -- _CSM_BOSSRUSH_TRAITLESS for Traitless or _CSM_BOSSRUSH_TRAITS for Trait
