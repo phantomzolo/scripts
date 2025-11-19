@@ -7,8 +7,6 @@ end
 while true do
     local request_makima_sacrifice = ReplicatedStorage.endpoints.client_to_server.request_makima_sacrifice -- RemoteFunction 
     
-    request_makima_sacrifice:InvokeServer(
-        "Placement"
-    )
+    request_makima_sacrifice:InvokeServer(selection)
     wait(10)
 end
