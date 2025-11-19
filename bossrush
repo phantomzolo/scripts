@@ -8,7 +8,7 @@ if game.CreatorId == 35139043 then
 	_G.Selection = {
 	    "Placement" -- Change to Unit or Damage or Placement
 	}
-	_G.Traits = {
+	_G.Mode = {
 	    "_CSM_BOSSRUSH_TRAITS" -- Change to _CSM_BOSSRUSH_TRAITLESS for traitless
 	}
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/phantomzolo/scripts/refs/heads/main/bossrushtraitless"))()
