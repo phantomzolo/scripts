@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local traits = _G.Traits or {}
+local mode = _G.Mode or {}
 
 local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
 local mobFolder = eventsFolder:WaitForChild("client_to_server")
@@ -9,7 +9,7 @@ local enterEvent = mobFolder:WaitForChild("request_join_lobby")
 local startEvent = mobFolder:WaitForChild("request_start_game")
 
 pcall(function()
-    enterEvent:InvokeServer(unpack(traits))
+    enterEvent:InvokeServer(unpack(mode))
     task.wait(0.3)
-    startEvent:InvokeServer(unpack(traits))
+    startEvent:InvokeServer(unpack(mode))
 end)
