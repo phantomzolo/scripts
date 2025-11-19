@@ -4,10 +4,13 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-
 if game.CreatorId == 35139043 then
-  loadstring(game:HttpGet("https://raw.githubusercontent.com/phantomzolo/scripts/refs/heads/main/bossrushtraitless"))()
-  wait(2)
+	local selection = {
+	    "Placement"
+	}
+
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/phantomzolo/scripts/refs/heads/main/bossrushtraitless"))()
+	wait(2)
 	loadstring(game:HttpGet("https://raw.githubusercontent.com/phantomzolo/scripts/refs/heads/main/placementac"))()
 else
 	return
