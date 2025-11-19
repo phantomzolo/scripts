@@ -1,3 +1,5 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
 local mobFolder = eventsFolder:WaitForChild("client_to_server")
 
