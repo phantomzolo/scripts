@@ -1,9 +1,3 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-if not game:IsLoaded() then
-    game.Loaded:Wait()
-end
-
 local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
 local mobFolder = eventsFolder:WaitForChild("client_to_server")
 
