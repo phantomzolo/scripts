@@ -3,6 +3,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 while true do
     local request_makima_sacrifice = ReplicatedStorage.endpoints.client_to_server.request_makima_sacrifice -- RemoteFunction 
     
-    request_makima_sacrifice:InvokeServer(selection)
+    request_makima_sacrifice:InvokeServer(_G.Selection)
     wait(10)
 end
