@@ -3,5 +3,5 @@ local selection = _G.Selection or {}
 local request_makima_sacrifice = ReplicatedStorage.endpoints.client_to_server.request_makima_sacrifice
 while true do
     request_makima_sacrifice:InvokeServer(unpack(selection))
-    wait(10)
+    wait(5)
 end
