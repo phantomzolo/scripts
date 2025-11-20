@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local selection = _G.Selection or {}
+
 while true do
+    local selection = _G.Selection or {}
     local request_makima_sacrifice = ReplicatedStorage.endpoints.client_to_server.request_makima_sacrifice -- RemoteFunction 
     
     request_makima_sacrifice:InvokeServer(selection)
