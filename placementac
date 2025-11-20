@@ -4,6 +4,6 @@ while true do
     local selection = _G.Selection or {}
     local request_makima_sacrifice = ReplicatedStorage.endpoints.client_to_server.request_makima_sacrifice -- RemoteFunction 
     
-    request_makima_sacrifice:InvokeServer(selection)
+    request_makima_sacrifice:InvokeServer(unpack(selection))
     wait(10)
 end
