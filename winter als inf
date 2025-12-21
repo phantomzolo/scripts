@@ -1,0 +1,25 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+ 
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+ 
+local stage = {
+    {
+        Difficulty = 5,
+        Mode = "Infinite", -- Stage or Infinite
+        Curses = {1,2,3,4,5,6,7,8,9,10}
+    }
+}
+ 
+local eventsFolder = ReplicatedStorage:WaitForChild("Events")
+local christmasFolder = eventsFolder:WaitForChild("Christmas2025")
+ 
+local enterEvent = christmasFolder:WaitForChild("Enter")
+local startEvent = christmasFolder:WaitForChild("Start")
+ 
+pcall(function()
+    enterEvent:FireServer(unpack(stage))
+    task.wait(2)
+    startEvent:FireServer(unpack(stage))
+end)
