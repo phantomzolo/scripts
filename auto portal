@@ -1,0 +1,49 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local endpoints = ReplicatedStorage:WaitForChild("endpoints")
+local stc = endpoints:WaitForChild("server_to_client")
+
+local Select_Portals = stc:WaitForChild("Select_Portals")
+local RequestPortal = endpoints.client_to_server:WaitForChild("RequestPortal")
+
+print("[Portal Auto] Loaded. Waiting for Select_Portals signal...")
+
+Select_Portals.OnClientEvent:Connect(function(portalList)
+    print("[Portal Auto] Portal data detected!")
+
+    local depth11Index = nil
+    local best = -math.huge
+
+    -- FIRST PRIORITY: depth 11
+    for i, portal in ipairs(portalList) do
+        local pd = portal._unique_item_data._unique_portal_data
+        if pd.portal_depth == 11 and pd._portal_reward_scale > best then
+            depth11Index = i
+            best = pd._portal_reward_scale
+        end
+    end
+
+    if depth11Index then
+        print("[Portal Auto] Selecting depth 11 portal:", depth11Index)
+        RequestPortal:InvokeServer(depth11Index)
+        return
+    end
+
+    -- SECOND PRIORITY: depth > 1
+    local fallback = nil
+    best = -math.huge
+
+    for i, portal in ipairs(portalList) do
+        local pd = portal._unique_item_data._unique_portal_data
+        if pd.portal_depth > 1 and pd._portal_reward_scale > best then
+            fallback = i
+            best = pd._portal_reward_scale
+        end
+    end
+
+    if fallback then
+        print("[Portal Auto] Selecting fallback portal:", fallback)
+        RequestPortal:InvokeServer(fallback)
+    else
+        warn("[Portal Auto] No valid portal found.")
+    end
+end)
