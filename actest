@@ -3,13 +3,13 @@ local endpoints = ReplicatedStorage:WaitForChild("endpoints")
 local stc = endpoints:WaitForChild("server_to_client")
 
 local Select_Portals = stc:WaitForChild("Select_Portals")
-local RequestPortal = endpoints.client_to_server:WaitForChild("RequestPortal")
+local RequestPortal = endpoints.client_to_server:WaitForChild("RequestPortal") -- RemoteEvent
 
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
--- Create GUI for mobile UI navigation
+-- GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "PortalAutoGUI"
 ScreenGui.ResetOnSpawn = false
@@ -20,14 +20,12 @@ MainFrame.Name = "MainFrame"
 MainFrame.Size = UDim2.new(0.8, 0, 0.6, 0)
 MainFrame.Position = UDim2.new(0.1, 0, 0.2, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-MainFrame.BackgroundTransparency = 0.5
-MainFrame.BorderSizePixel = 2
+MainFrame.BackgroundTransparency = 0.4
 MainFrame.Parent = ScreenGui
 
 local ToggleButton = Instance.new("TextButton")
 ToggleButton.Name = "ToggleButton"
 ToggleButton.Size = UDim2.new(1, 0, 0.1, 0)
-ToggleButton.Position = UDim2.new(0, 0, 0, 0)
 ToggleButton.Text = "Auto Select: ON"
 ToggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 ToggleButton.TextColor3 = Color3.fromRGB(0, 0, 0)
@@ -40,97 +38,125 @@ PortalListFrame.Name = "PortalListFrame"
 PortalListFrame.Size = UDim2.new(1, 0, 0.9, 0)
 PortalListFrame.Position = UDim2.new(0, 0, 0.1, 0)
 PortalListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-PortalListFrame.BackgroundTransparency = 0.5
-PortalListFrame.BorderSizePixel = 1
-PortalListFrame.ScrollBarThickness = 10
+PortalListFrame.BackgroundTransparency = 0.4
+PortalListFrame.ScrollBarThickness = 8
 PortalListFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = PortalListFrame
+UIListLayout.Padding = UDim.new(0, 6)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-UIListLayout.Padding = UDim.new(0, 5)
 
 local autoSelectEnabled = true
 
 ToggleButton.MouseButton1Click:Connect(function()
-    autoSelectEnabled = not autoSelectEnabled
-    ToggleButton.Text = autoSelectEnabled and "Auto Select: ON" or "Auto Select: OFF"
-    ToggleButton.BackgroundColor3 = autoSelectEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+	autoSelectEnabled = not autoSelectEnabled
+	ToggleButton.Text = autoSelectEnabled and "Auto Select: ON" or "Auto Select: OFF"
+	ToggleButton.BackgroundColor3 = autoSelectEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 end)
 
-print("[Portal Auto] Loaded. Waiting for Select_Portals signal...")
+print("[Portal Auto] Loaded. Waiting for Select_Portals...")
+
+-- FUNCTIONS ----------------------------------------------------------
 
 local function clearPortalButtons()
-    for _, child in ipairs(PortalListFrame:GetChildren()) do
-        if child:IsA("TextButton") then
-            child:Destroy()
-        end
-    end
+	for _, child in ipairs(PortalListFrame:GetChildren()) do
+		if child:IsA("TextButton") then
+			child:Destroy()
+		end
+	end
+end
+
+local function safeGetPortalData(portal)
+	if typeof(portal) ~= "table" then return nil end
+	if not portal._unique_item_data then return nil end
+	if not portal._unique_item_data._unique_portal_data then return nil end
+	return portal._unique_item_data._unique_portal_data
 end
 
 local function createPortalButton(portal, index)
-    local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -10, 0, 50)
-    button.Text = string.format("Portal %d: Depth %d, Reward %.2f", index, portal._unique_item_data._unique_portal_data.portal_depth, portal._unique_item_data._unique_portal_data._portal_reward_scale)
-    button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.Font = Enum.Font.SourceSans
-    button.TextSize = 16
-    button.Parent = PortalListFrame
+	local pd = safeGetPortalData(portal)
+	if not pd then return end
 
-    button.MouseButton1Click:Connect(function()
-        print("[Portal Auto] Manually selecting portal:", index)
-        RequestPortal:InvokeServer(index)
-        clearPortalButtons()
-    end)
+	local txt = string.format(
+		"Portal %d | Depth %d | Reward %.2f", 
+		index, 
+		pd.portal_depth or 0, 
+		pd._portal_reward_scale or 0
+	)
+
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(1, -10, 0, 45)
+	button.Text = txt
+	button.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+	button.TextColor3 = Color3.fromRGB(255, 255, 255)
+	button.Font = Enum.Font.SourceSansBold
+	button.TextSize = 16
+	button.Parent = PortalListFrame
+
+	button.MouseButton1Click:Connect(function()
+		print("[Portal Auto] Manual select:", index)
+		RequestPortal:FireServer(index)
+		clearPortalButtons()
+	end)
 end
 
+-- MAIN EVENT ---------------------------------------------------------
+
 Select_Portals.OnClientEvent:Connect(function(portalList)
-    print("[Portal Auto] Portal data detected!")
+	print("[Portal Auto] Portal list received.")
 
-    clearPortalButtons()
+	clearPortalButtons()
 
-    if autoSelectEnabled then
-        local depth11Index = nil
-        local best = -math.huge
+	if not portalList or #portalList == 0 then
+		warn("[Portal Auto] Empty portal list!")
+		return
+	end
 
-        -- FIRST PRIORITY: depth 11
-        for i, portal in ipairs(portalList) do
-            local pd = portal._unique_item_data._unique_portal_data
-            if pd.portal_depth == 11 and pd._portal_reward_scale > best then
-                depth11Index = i
-                best = pd._portal_reward_scale
-            end
-        end
+	-- AUTO MODE -------------------------------------------------------
+	if autoSelectEnabled then
+		local bestDepth11 = nil
+		local bestReward = -math.huge
 
-        if depth11Index then
-            print("[Portal Auto] Selecting depth 11 portal:", depth11Index)
-            RequestPortal:InvokeServer(depth11Index)
-            return
-        end
+		-- PRIORITY 1 — depth 11
+		for i, portal in ipairs(portalList) do
+			local pd = safeGetPortalData(portal)
+			if pd and pd.portal_depth == 11 and pd._portal_reward_scale > bestReward then
+				bestDepth11 = i
+				bestReward = pd._portal_reward_scale
+			end
+		end
 
-        -- SECOND PRIORITY: depth > 1
-        local fallback = nil
-        best = -math.huge
+		if bestDepth11 then
+			print("[Portal Auto] Selecting DEPTH 11 portal:", bestDepth11)
+			RequestPortal:FireServer(bestDepth11)
+			return
+		end
 
-        for i, portal in ipairs(portalList) do
-            local pd = portal._unique_item_data._unique_portal_data
-            if pd.portal_depth > 1 and pd._portal_reward_scale > best then
-                fallback = i
-                best = pd._portal_reward_scale
-            end
-        end
+		-- PRIORITY 2 — any depth > 1 with highest reward
+		local fallback = nil
+		local bestFallback = -math.huge
 
-        if fallback then
-            print("[Portal Auto] Selecting fallback portal:", fallback)
-            RequestPortal:InvokeServer(fallback)
-        else
-            warn("[Portal Auto] No valid portal found.")
-        end
-    else
-        -- Manual selection mode: create buttons for each portal
-        for i, portal in ipairs(portalList) do
-            createPortalButton(portal, i)
-        end
-    end
+		for i, portal in ipairs(portalList) do
+			local pd = safeGetPortalData(portal)
+			if pd and pd.portal_depth > 1 and pd._portal_reward_scale > bestFallback then
+				fallback = i
+				bestFallback = pd._portal_reward_scale
+			end
+		end
+
+		if fallback then
+			print("[Portal Auto] Selecting fallback portal:", fallback)
+			RequestPortal:FireServer(fallback)
+			return
+		end
+
+		warn("[Portal Auto] No valid portal to auto-select.")
+		return
+	end
+
+	-- MANUAL MODE -------------------------------------------------------
+	for i, portal in ipairs(portalList) do
+		createPortalButton(portal, i)
+	end
 end)
