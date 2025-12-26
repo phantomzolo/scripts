@@ -3,7 +3,7 @@ local endpoints = ReplicatedStorage:WaitForChild("endpoints")
 local stc = endpoints:WaitForChild("server_to_client")
 
 local Select_Portals = stc:WaitForChild("Select_Portals")
-local RequestPortal = endpoints.client_to_server:WaitForChild("RequestPortal") -- RemoteEvent
+local RequestPortal = endpoints.client_to_server:WaitForChild("RequestPortal")
 
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
@@ -46,20 +46,13 @@ PortalListFrame.Parent = MainFrame
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Parent = PortalListFrame
-UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout.Padding = UDim.new(0, 5)
 
 ---------------------------------------------------------------------
--- VARIABLES + FUNCTIONS
+-- SAFE FUNCTIONS
 ---------------------------------------------------------------------
-local autoSelectEnabled = true
 
-ToggleButton.MouseButton1Click:Connect(function()
-	autoSelectEnabled = not autoSelectEnabled
-	ToggleButton.Text = autoSelectEnabled and "Auto Select: ON" or "Auto Select: OFF"
-	ToggleButton.BackgroundColor3 = autoSelectEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-end)
-
+-- SAFE CLEAN BUTTON RESET
 local function clearPortalButtons()
 	for _, child in ipairs(PortalListFrame:GetChildren()) do
 		if child:IsA("TextButton") then
@@ -68,16 +61,28 @@ local function clearPortalButtons()
 	end
 end
 
-local function safeGetPortalData(portal)
+-- SAFE PORTAL DATA GETTER (never returns nil)
+local function getPortalData(portal)
+	-- portal must be a table
 	if typeof(portal) ~= "table" then return nil end
-	if not portal._unique_item_data then return nil end
-	if not portal._unique_item_data._unique_portal_data then return nil end
-	return portal._unique_item_data._unique_portal_data
+
+	local uid = portal._unique_item_data
+	if typeof(uid) ~= "table" then return nil end
+
+	local up = uid._unique_portal_data
+	if typeof(up) ~= "table" then return nil end
+
+	-- all values exist safely
+	return up
 end
 
+-- SAFE BUTTON CREATION
 local function createPortalButton(portal, index)
-	local pd = safeGetPortalData(portal)
+	local pd = getPortalData(portal)
 	if not pd then return end
+
+	local depth = pd.portal_depth or 0
+	local reward = pd._portal_reward_scale or 0
 
 	local button = Instance.new("TextButton")
 	button.Size = UDim2.new(1, -10, 0, 45)
@@ -85,98 +90,93 @@ local function createPortalButton(portal, index)
 	button.TextColor3 = Color3.fromRGB(255, 255, 255)
 	button.Font = Enum.Font.SourceSansBold
 	button.TextSize = 16
-	button.Text = string.format("Portal %d | Depth %d | Reward %.2f", index, pd.portal_depth or 0, pd._portal_reward_scale or 0)
+	button.Text = string.format("Portal %d | Depth %d | Reward %.2f", index, depth, reward)
 	button.Parent = PortalListFrame
 
 	button.MouseButton1Click:Connect(function()
-		print("[Portal Auto] Manual select:", index)
 		RequestPortal:FireServer(index)
 		clearPortalButtons()
 	end)
 end
 
-print("[Portal Auto] Fully loaded. Waiting for portal list...")
+---------------------------------------------------------------------
+-- MAIN LOGIC (WITH COMPLETE NIL PROTECTION)
+---------------------------------------------------------------------
 
----------------------------------------------------------------------
--- MAIN EVENT — THIS PART WAS BREAKING (NOW PATCHED)
----------------------------------------------------------------------
+local autoSelect = true
+
+ToggleButton.MouseButton1Click:Connect(function()
+	autoSelect = not autoSelect
+	ToggleButton.Text = autoSelect and "Auto Select: ON" or "Auto Select: OFF"
+	ToggleButton.BackgroundColor3 = autoSelect and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+end)
 
 Select_Portals.OnClientEvent:Connect(function(portalList)
 
 	-----------------------------------------------------------------
-	-- SAFETY VALIDATION (FIXES THE NIL CALL ERROR)
+	-- STEP 1: ENSURE portalList IS A VALID TABLE
 	-----------------------------------------------------------------
-	if typeof(portalList) ~= "table" then
-		warn("[Portal Auto] INVALID portalList: not a table. Ignored.")
+	if typeof(portalList) ~= "table" or not portalList[1] then
+		warn("[Portal Auto] Invalid event data. Ignored safely.")
 		return
 	end
 
-	-- Check first entry structure
-	local first = portalList[1]
-	if not first
-		or typeof(first) ~= "table"
-		or not first._unique_item_data
-		or not first._unique_item_data._unique_portal_data then
-
-		warn("[Portal Auto] Event triggered but NOT portal data. Ignored.")
+	-----------------------------------------------------------------
+	-- STEP 2: ENSURE FIRST PORTAL HAS VALID STRUCTURE
+	-----------------------------------------------------------------
+	if not getPortalData(portalList[1]) then
+		warn("[Portal Auto] Event does not match portal data. Ignored.")
 		return
 	end
 
-	print("[Portal Auto] Valid portal list received.")
+	print("[Portal Auto] Valid portal list received")
 
-	-----------------------------------------------------------------
 	clearPortalButtons()
 
-	if autoSelectEnabled then
-		-----------------------------------------------------------------
-		-- PRIORITY 1: depth 11 highest reward
-		-----------------------------------------------------------------
-		local bestDepth11 = nil
-		local highest11 = -math.huge
+	-----------------------------------------------------------------
+	-- AUTO MODE
+	-----------------------------------------------------------------
+	if autoSelect then
+		local depth11Index = nil
+		local bestD11Reward = -math.huge
 
+		-- PRIORITY 1: Depth 11
 		for i, portal in ipairs(portalList) do
-			local pd = safeGetPortalData(portal)
-			if pd and pd.portal_depth == 11 and pd._portal_reward_scale > highest11 then
-				bestDepth11 = i
-				highest11 = pd._portal_reward_scale
+			local pd = getPortalData(portal)
+			if pd and pd.portal_depth == 11 and pd._portal_reward_scale > bestD11Reward then
+				depth11Index = i
+				bestD11Reward = pd._portal_reward_scale
 			end
 		end
 
-		if bestDepth11 then
-			print("[Portal Auto] Selecting DEPTH 11 portal:", bestDepth11)
-			RequestPortal:FireServer(bestDepth11)
+		if depth11Index then
+			RequestPortal:FireServer(depth11Index)
 			return
 		end
 
-		-----------------------------------------------------------------
-		-- PRIORITY 2: depth > 1 highest reward
-		-----------------------------------------------------------------
-		local fallback = nil
-		local bestFallback = -math.huge
+		-- PRIORITY 2: Highest reward for depth > 1
+		local fallbackIndex = nil
+		local fallbackReward = -math.huge
 
 		for i, portal in ipairs(portalList) do
-			local pd = safeGetPortalData(portal)
-			if pd and pd.portal_depth > 1 and pd._portal_reward_scale > bestFallback then
-				fallback = i
-				bestFallback = pd._portal_reward_scale
+			local pd = getPortalData(portal)
+			if pd and pd.portal_depth > 1 and pd._portal_reward_scale > fallbackReward then
+				fallbackIndex = i
+				fallbackReward = pd._portal_reward_scale
 			end
 		end
 
-		if fallback then
-			print("[Portal Auto] Selecting fallback portal:", fallback)
-			RequestPortal:FireServer(fallback)
-			return
+		if fallbackIndex then
+			RequestPortal:FireServer(fallbackIndex)
 		end
 
-		warn("[Portal Auto] No valid portal found.")
 		return
+	end
 
-	else
-		-----------------------------------------------------------------
-		-- MANUAL MODE
-		-----------------------------------------------------------------
-		for i, portal in ipairs(portalList) do
-			createPortalButton(portal, i)
-		end
+	-----------------------------------------------------------------
+	-- MANUAL MODE
+	-----------------------------------------------------------------
+	for i, portal in ipairs(portalList) do
+		createPortalButton(portal, i)
 	end
 end)
