@@ -1,0 +1,21 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local dragon = {
+    "_CHRISTMAS"
+}
+
+local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
+local dragonFolder = eventsFolder:WaitForChild("client_to_server")
+
+local enterEvent = dragonFolder:WaitForChild("request_join_lobby")
+local startEvent = dragonFolder:WaitForChild("request_start_game")
+
+pcall(function()
+    enterEvent:InvokeServer(unpack(dragon))
+    task.wait(0.3)
+    startEvent:InvokeServer(unpack(dragon))
+end)
