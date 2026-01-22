@@ -1,0 +1,21 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local bleach = {
+    "_BL_BOSSRUSH_TRAITS"
+}
+
+local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
+local bleachFolder = eventsFolder:WaitForChild("client_to_server")
+
+local enterEvent = bleachFolder:WaitForChild("request_join_lobby")
+local startEvent = bleachFolder:WaitForChild("request_start_game")
+
+pcall(function()
+    enterEvent:InvokeServer(unpack(bleach))
+    task.wait(0.3)
+    startEvent:InvokeServer(unpack(bleach))
+end)
