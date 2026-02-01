@@ -1,0 +1,31 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local akaza = {
+    [1] = "P1",
+    [2] = "ds_legend_3",
+    [3] = false,
+    [4] = "Hard"
+}
+
+local start = {
+    "P1"
+}
+
+local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
+local akazaFolder = eventsFolder:WaitForChild("client_to_server")
+
+local enterEvent = akazaFolder:WaitForChild("request_join_lobby")
+local startEvent = akazaFolder:WaitForChild("request_start_game")
+local lockMap = akazaFolder:WaitForChild("request_lock_level")
+
+pcall(function()
+    enterEvent:InvokeServer(unpack(start))
+    task.wait(2)
+    lockMap:InvokeServer(unpack(akaza))
+    task.wait(2)
+    startEvent:InvokeServer(unpack(start))
+end)
