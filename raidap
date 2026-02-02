@@ -1,0 +1,28 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local legend = {
+    [1] = "Create",
+    [2] = "Red_Gate",
+    [3] = "Raid",
+    [4] = "3",
+    [5] = false,
+    [6] = "Normal"
+}
+
+local start = {
+    [1] = "Start",
+}
+
+local legendFolder = ReplicatedStorage:WaitForChild("Remotes")
+local mapFolder = legendFolder:WaitForChild("Pod")
+
+task.wait(5)
+pcall(function()
+    mapFolder:FireServer(unpack(legend))
+    task.wait(0.5)
+    mapFolder:FireServer(unpack(start))
+end)
