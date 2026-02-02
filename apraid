@@ -20,9 +20,9 @@ local start = {
 local legendFolder = ReplicatedStorage:WaitForChild("Remotes")
 local mapFolder = legendFolder:WaitForChild("Pod")
 
-task.wait(5)
+task.wait(3)
 pcall(function()
     mapFolder:FireServer(unpack(legend))
-    task.wait(0.5)
+    task.wait(2)
     mapFolder:FireServer(unpack(start))
 end)
