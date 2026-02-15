@@ -101,8 +101,8 @@ local function ListenPortal()
               task.wait(10) -- optional small delay before using
               StageEnd:FireServer("UsePortal", ref)
               print("Portal used:", ref)
-              ListenPortal()
         end)
     end
+    return ListenPortal()
 end
 end)
