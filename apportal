@@ -101,6 +101,7 @@ Event.OnClientEvent:Connect(function(action, newItem, inventoryData)
     task.spawn(function()
         local id, level, ref = GetHighestJJKPortal()
         if id then
+            task.wait(10)
             print("Current Highest Portal Detected!")
             print("Portal ID:", id)
             print("Portal Level:", level)
