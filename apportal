@@ -81,26 +81,28 @@ else
 end
 
 
-
--- Keep track of current highest portal level
-local currentHighestLevel = -math.huge
-
--- Listen to ItemAdded events
-Event.OnClientEvent:Connect(function(action, newItem, inventoryData)
-    if action ~= "ItemAdded" or not inventoryData then return end
-    task.wait(5)
-    -- Recheck inventory for highest portal
-    local id, level, ref = GetHighestJJKPortal()
-    if id and level > currentHighestLevel then
-        currentHighestLevel = level
-        print("New Highest Portal Found!")
-        print("Portal ID:", id)
-        print("Portal Level:", level)
-        print("Portal Ref:", ref)
+local function ListenPortal()
+    -- Keep track of current highest portal level
+    local currentHighestLevel = -math.huge
+    
+    -- Listen to ItemAdded events
+    Event.OnClientEvent:Connect(function(action, newItem, inventoryData)
+        if action ~= "ItemAdded" or not inventoryData then return end
+        task.wait(5)
+        -- Recheck inventory for highest portal
+        local id, level, ref = GetHighestJJKPortal()
+        if id and level > currentHighestLevel then
+            currentHighestLevel = level
+            print("New Highest Portal Found!")
+            print("Portal ID:", id)
+            print("Portal Level:", level)
+            print("Portal Ref:", ref)
         task.spawn(function()
-            task.wait(10) -- optional small delay before using
-            StageEnd:FireServer("UsePortal", ref)
-            print("Portal used:", ref)
+              task.wait(10) -- optional small delay before using
+              StageEnd:FireServer("UsePortal", ref)
+              print("Portal used:", ref)
+              ListenPortal()
         end)
     end
+end
 end)
