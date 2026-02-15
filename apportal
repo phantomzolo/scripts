@@ -97,7 +97,10 @@ Event.OnClientEvent:Connect(function(action, newItem, inventoryData)
         print("Portal ID:", id)
         print("Portal Level:", level)
         print("Portal Ref:", ref)
-        task.wait(10)
-        StageEnd:FireServer("UsePortal",ref)
+        task.spawn(function()
+            task.wait(10) -- optional small delay before using
+            StageEnd:FireServer("UsePortal", ref)
+            print("Portal used:", ref)
+        end)
     end
 end)
