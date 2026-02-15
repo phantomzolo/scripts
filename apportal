@@ -65,10 +65,10 @@ local function GetHighestJJKPortal()
     return bestPortalId, bestLevel, bestRef
 end
 
-task.wait(5)
+task.wait(3)
 task.spawn(function()
     local id, level, ref = GetHighestJJKPortal()
-    
+        
     if id then
         print("Highest Portal ID:", id)
         print("Highest Portal Level:", level)
@@ -81,6 +81,7 @@ task.spawn(function()
         warn("No JJK portal found.")
     end
 end)
+
 
 
 -- Keep track of current highest portal level
