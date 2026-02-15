@@ -73,11 +73,9 @@ task.spawn(function()
         print("Highest Portal Level:", level)
         print("Portal Ref:", ref)
         task.wait(3)
-        pcall(function()
         UsePortal:FireServer(id)
         task.wait(0.5)
         Portal:FireServer(unpack(start))
-    end)
     else
         warn("No JJK portal found.")
     end
