@@ -7,12 +7,7 @@ end
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local Event = Remotes:WaitForChild("Inventory")
 local StageEnd = Remotes:WaitForChild("StageEnd")
-local UsePortal = Remotes:WaitForChild("UseItem") -- open portal
-local Portal = Remotes:WaitForChild("Portal") -- start/leave
 
-local start = {
-    [1] = "Start",
-}
 
 -- Scan getgc for the inventory table
 local function FindInventoryTable()
@@ -65,53 +60,22 @@ local function GetHighestJJKPortal()
     return bestPortalId, bestLevel, bestRef
 end
 
-task.wait(3)
-task.spawn(function()
-    local id, level, ref = GetHighestJJKPortal()
-        
-    if id then
-        print("Highest Portal ID:", id)
-        print("Highest Portal Level:", level)
-        print("Portal Ref:", ref)
-        task.wait(3)
-        UsePortal:FireServer(id)
-        task.wait(0.5)
-        Portal:FireServer(unpack(start))
-    else
-        warn("No JJK portal found.")
-    end
-end)
-
-
-
 -- Keep track of current highest portal level
 local currentHighestLevel = -math.huge
 
-local pr = false
 -- Listen to ItemAdded events
 Event.OnClientEvent:Connect(function(action, newItem, inventoryData)
-    if action ~= "ItemAdded" then
-        return
+    if action ~= "ItemAdded" or not inventoryData then return end
+    task.wait(5)
+    -- Recheck inventory for highest portal
+    local id, level, ref = GetHighestJJKPortal()
+    if id and level > currentHighestLevel then
+        currentHighestLevel = level
+        print("New Highest Portal Found!")
+        print("Portal ID:", id)
+        print("Portal Level:", level)
+        print("Portal Ref:", ref)
+        task.wait(10)
+        StageEnd:FireServer("UsePortal",ref)
     end
-
-    if pr then
-        return
-    end
-
-    pr = true
-    task.spawn(function()
-        local id, level, ref = GetHighestJJKPortal()
-        if id then
-            task.wait(10)
-            print("Current Highest Portal Detected!")
-            print("Portal ID:", id)
-            print("Portal Level:", level)
-            print("Portal Ref:", ref)
-
-            -- Use the portal
-            StageEnd:FireServer("UsePortal", ref)
-            print("Portal used:", ref)
-        end
-        pr = false
-    end)
 end)
