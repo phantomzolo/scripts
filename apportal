@@ -1,0 +1,103 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local Event = Remotes:WaitForChild("Inventory")
+local StageEnd = Remotes:WaitForChild("StageEnd")
+local UsePortal = Remotes:WaitForChild("UseItem") -- open portal
+local Portal = Remotes:WaitForChild("Portal") -- start/leave
+
+local start = {
+    [1] = "Start",
+}
+
+-- Scan getgc for the inventory table
+local function FindInventoryTable()
+    for _, v in pairs(getgc(true)) do
+        if type(v) == "table" then
+            for _, item in pairs(v) do
+                if type(item) == "table"
+                and rawget(item, "BaseDataRef")
+                and rawget(item, "Id")
+                and rawget(item, "Amount")
+                and type(item.BaseDataRef) == "string" then
+                    if string.find(item.BaseDataRef, "Portal") then
+                        return v
+                    end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+-- Get highest-level JJK portal
+local function GetHighestJJKPortal()
+    local InventoryTable = FindInventoryTable()
+    if not InventoryTable then
+        warn("Inventory table not found.")
+        return nil, nil, nil
+    end
+
+    local bestLevel = -math.huge
+    local bestPortalId = nil
+    local bestRef = nil
+
+    for _, item in pairs(InventoryTable) do
+        if type(item) == "table"
+        and rawget(item, "BaseDataRef")
+        and rawget(item, "Id")
+        and type(item.BaseDataRef) == "string"
+        and string.find(item.BaseDataRef, "JJK_Portal_Lv") then
+            
+            local level = tonumber(string.match(item.BaseDataRef, "Lv(%d+)"))
+            if level and level > bestLevel then
+                bestLevel = level
+                bestPortalId = item.Id
+                bestRef = item.BaseDataRef
+            end
+        end
+    end
+
+    return bestPortalId, bestLevel, bestRef
+end
+
+local id, level = GetHighestJJKPortal()
+
+if id then
+    print("Highest Portal ID:", id)
+    print("Highest Portal Level:", level)
+    task.wait(3)
+    pcall(function()
+    UsePortal:FireServer(id)
+    task.wait(0.5)
+    Portal:FireServer(unpack(start))
+end)
+else
+    warn("No JJK portal found.")
+end
+
+
+
+-- Keep track of current highest portal level
+local currentHighestLevel = -math.huge
+
+-- Listen to ItemAdded events
+Event.OnClientEvent:Connect(function(action, newItem, inventoryData)
+    if action ~= "ItemAdded" or not inventoryData then return end
+    task.wait(5)
+    -- Recheck inventory for highest portal
+    local id, level, ref = GetHighestJJKPortal()
+    if id and level > currentHighestLevel then
+        currentHighestLevel = level
+        print("New Highest Portal Found!")
+        print("Portal ID:", id)
+        print("Portal Level:", level)
+        print("Portal Ref:", ref)
+        task.wait(10)
+        StageEnd:FireServer("UsePortal",ref)
+    end
+end)
