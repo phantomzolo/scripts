@@ -65,6 +65,7 @@ local function GetHighestJJKPortal()
     return bestPortalId, bestLevel, bestRef
 end
 
+task.wait(5)
 task.spawn(function()
     local id, level, ref = GetHighestJJKPortal()
     
