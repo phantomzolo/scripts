@@ -1,23 +1,15 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local r5 = game:GetService("ReplicatedStorage")
+local w5 = game:GetService("Workspace")
 
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-local Workspace = game:GetService("Workspace")
-local endpoints = ReplicatedStorage:WaitForChild("endpoints")
-local stc = endpoints:WaitForChild("server_to_client")
-local cts = endpoints:WaitForChild("client_to_server")
+local f9 = r5.endpoints.server_to_client.game_finished
+local v2 = r5.endpoints.client_to_server.set_game_finished_vote
+local l7 = w5._GATES.gates
 
-
-local FinishedEvent = stc:WaitForChild("game_finished")
-
-local VoteRemote = cts:WaitForChild("set_game_finished_vote")
-
-local GatesFolder = Workspace:WaitForChild("_GATES"):WaitForChild("Lobbies")
-
--- priority from highest to lowest
-local Priority = {
+local p1 = {
     ["Godlike Contract"] = 6,
     ["Mythic Contract"] = 5,
     ["Legendary Contract"] = 4,
@@ -26,64 +18,56 @@ local Priority = {
     ["Rookie Contract"] = 1,
 }
 
-local function GetHighestGate()
-    local HighestGate = nil
-    local HighestValue = nil
-    local HighestPriority = 0
-    local HighestGateNumber = nil
+local function x8()
+    local g4
+    local n6
+    local i3
+    local h1 = 0
 
-    for i = 1, 11 do
-        local gateFolder = GatesFolder:FindFirstChild("_GATE" .. i)
+    for s2 = 1, 11 do
+        local b7 = l7:FindFirstChild(tostring(s2))
 
-        if gateFolder and gateFolder:FindFirstChild("Gate") then
-            local gate = gateFolder.Gate
-            local value = nil
+        if b7 and b7:FindFirstChild("GateType") then
+            local z5 = b7.GateType.Value
+            local c4 = b7:FindFirstChild("challenge")
 
-            -- read value
-            if gate:IsA("StringValue") then
-                value = gate.Value
-
-            elseif gate:FindFirstChildWhichIsA("StringValue") then
-                value = gate:FindFirstChildWhichIsA("StringValue").Value
-
-            elseif gate:GetAttribute("Value") then
-                value = gate:GetAttribute("Value")
+            -- ignore double_cost
+            if c4 and c4.Value == "double_cost" then
+                print("skip:", b7.Name)
+                continue
             end
 
-            -- compare priority
-            if value and Priority[value] then
-                if Priority[value] > HighestPriority then
-                    HighestPriority = Priority[value]
-                    HighestGate = gateFolder.Name
-                    HighestValue = value
-                    HighestGateNumber = i
-                end
+            print("r8:", b7.Name, z5)
+
+            if z5 and p1[z5] and p1[z5] > h1 then
+                h1 = p1[z5]
+                g4 = b7.Name
+                n6 = z5
+                i3 = s2
             end
         end
     end
 
-    return HighestGate, HighestValue, HighestGateNumber
+    return g4, n6, i3
 end
 
-FinishedEvent.OnClientEvent:Connect(function(data)
-    print("Game finished detected")
+f9.OnClientEvent:Connect(function()
+    print("f9")
 
-    task.wait(0.5)
+    task.wait(2)
 
-    local HighestGate, HighestValue, GateNumber = GetHighestGate()
+    local g4, n6, i3 = x8()
 
-    if HighestGate and GateNumber then
-        print("Selected:", HighestGate, "-", HighestValue)
+    if g4 and i3 then
+        print("x8:", g4, n6)
 
-        VoteRemote:InvokeServer(
+        v2:InvokeServer(
             "play_gate_next",
             {
-                GateUuid = GateNumber
+                GateUuid = i3
             }
         )
 
-        print("Sent next gate vote:", GateNumber)
-    else
-        warn("No valid gate found")
+        print("v2:", i3)
     end
 end)
