@@ -1,0 +1,67 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
+local mobFolder = eventsFolder:WaitForChild("client_to_server")
+
+local enterEvent = mobFolder:WaitForChild("request_join_lobby")
+local startEvent = mobFolder:WaitForChild("request_start_game")
+
+local GatesFolder = workspace:WaitForChild("_GATES"):WaitForChild("Lobbies")
+
+-- priority from highest to lowest
+local Priority = {
+    ["Godlike Contract"] = 6,
+    ["Mythic Contract"] = 5,
+    ["Legendary Contract"] = 4,
+    ["Elite Contract"] = 3,
+    ["Standard Contract"] = 2,
+    ["Rookie Contract"] = 1,
+}
+
+local HighestGate = nil
+local HighestValue = nil
+local HighestPriority = 0
+
+for i = 1, 11 do
+    local gateFolder = GatesFolder:FindFirstChild("_GATE" .. i)
+
+    if gateFolder and gateFolder:FindFirstChild("Gate") then
+        local gate = gateFolder.Gate
+        local value = nil
+
+        -- read value
+        if gate:IsA("StringValue") then
+            value = gate.Value
+
+        elseif gate:FindFirstChildWhichIsA("StringValue") then
+            value = gate:FindFirstChildWhichIsA("StringValue").Value
+
+        elseif gate:GetAttribute("Value") then
+            value = gate:GetAttribute("Value")
+        end
+
+        -- compare priority
+        if value and Priority[value] then
+            if Priority[value] > HighestPriority then
+                HighestPriority = Priority[value]
+                HighestGate = gateFolder.Name
+                HighestValue = value
+            end
+        end
+    end
+end
+
+-- join and start highest gate found
+if HighestGate then
+        pcall(function()
+            enterEvent:InvokeServer(unpack(HighestGate))
+            task.wait(0.5)
+            startEvent:InvokeServer(unpack(HighestGate))
+        end)
+else
+    print("No matching contracts found.")
+end
