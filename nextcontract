@@ -19,55 +19,64 @@ local p1 = {
 }
 
 local function x8()
-    local g4
-    local n6
-    local i3
-    local h1 = 0
+    local BestGate = nil
+    local BestType = nil
+    local BestIndex = nil
+    local HighestValue = -1
 
-    for s2 = 1, 11 do
-        local b7 = l7:FindFirstChild(tostring(s2))
+    for i = 1, 11 do
+        local Gate = l7:FindFirstChild(tostring(i))
 
-        if b7 and b7:FindFirstChild("GateType") then
-            local z5 = b7.GateType.Value
-            local c4 = b7:FindFirstChild("challenge")
+        if Gate then
+            local GateType = Gate:FindFirstChild("GateType")
+            local Challenge = Gate:FindFirstChild("challenge")
 
-            -- ignore double_cost
-            if c4 and c4.Value == "double_cost" then
-                print("skip:", b7.Name)
-                continue
-            end
+            if GateType and GateType.Value then
+                local ContractName = GateType.Value
+                local ChallengeValue = Challenge and Challenge.Value or ""
 
-            print("r8:", b7.Name, z5)
+                -- SKIP DOUBLE COST
+                if ChallengeValue == "double_cost" then
+                    print("Skipped Double Cost:", Gate.Name, ContractName)
 
-            if z5 and p1[z5] and p1[z5] > h1 then
-                h1 = p1[z5]
-                g4 = b7.Name
-                n6 = z5
-                i3 = s2
+                else
+                    local Value = p1[ContractName]
+
+                    print("Checking:", Gate.Name, ContractName, "Value:", Value)
+
+                    if Value and Value > HighestValue then
+                        HighestValue = Value
+                        BestGate = Gate.Name
+                        BestType = ContractName
+                        BestIndex = i
+                    end
+                end
             end
         end
     end
 
-    return g4, n6, i3
+    return BestGate, BestType, BestIndex
 end
 
 f9.OnClientEvent:Connect(function()
-    print("f9")
+    print("Game Finished")
 
     task.wait(2)
 
-    local g4, n6, i3 = x8()
+    local GateName, ContractType, GateIndex = x8()
 
-    if g4 and i3 then
-        print("x8:", g4, n6)
+    if GateName and GateIndex then
+        print("Selected:", GateName, ContractType)
 
         v2:InvokeServer(
             "play_gate_next",
             {
-                GateUuid = i3
+                GateUuid = GateIndex
             }
         )
 
-        print("v2:", i3)
+        print("Joined Gate:", GateIndex)
+    else
+        warn("No valid gate found")
     end
 end)
