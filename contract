@@ -4,12 +4,6 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-local eventsFolder = ReplicatedStorage:WaitForChild("endpoints")
-local mobFolder = eventsFolder:WaitForChild("client_to_server")
-
-local enterEvent = mobFolder:WaitForChild("request_join_lobby")
-local startEvent = mobFolder:WaitForChild("request_start_game")
-
 local GatesFolder = workspace:WaitForChild("_GATES"):WaitForChild("Lobbies")
 
 -- priority from highest to lowest
@@ -58,10 +52,13 @@ end
 -- join and start highest gate found
 if HighestGate then
         pcall(function()
-            enterEvent:InvokeServer(unpack(HighestGate))
-            task.wait(0.5)
-            startEvent:InvokeServer(unpack(HighestGate))
-        end)
+        local Event = game:GetService("ReplicatedStorage").endpoints.client_to_server.request_join_lobby
+                Event:InvokeServer(HighestGate)
+        task.wait(0.5)
+        local Event2 = game:GetService("ReplicatedStorage").endpoints.client_to_server.request_start_game
+                Event:InvokeServer(HighestGate)
+    end)
 else
     print("No matching contracts found.")
 end
+
